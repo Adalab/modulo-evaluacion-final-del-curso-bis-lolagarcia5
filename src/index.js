@@ -20,9 +20,6 @@ const server = express();
 
 server.use(cors());
 server.use(express.json({limit: "25mb"}));
-server.set('view engine', 'ejs');
-
-
 
 // Conexion a la base de datos
 
@@ -47,40 +44,117 @@ async function getConnection() {
 
 const port = process.env.PORT || 4500;
 server.listen(port, () => {
-  console.log(`Ya se ha arrancado nuestro servidor: http://localhost:${port}/`);
+  console.log(`Ya se ha arrancado nuestro servidor: http://localhost:${4500}/`);
 });
 
 
 
 // Endpoints
+// obtener todos los libros
+// GET/libros
 
-// GET /api/items
+server.get('/libros', async (req, res) => {
 
-server.get("/api/items", async (req, res) => {
-
-  const selectProducts = "SELECT * FROM products";
-
+  const selectAllRec = 'SELECT * FROM libros_db';
   const conn = await getConnection();
-
-  const [results] = await conn.query(selectProducts);
-
-  console.log(results);
-
+  const [result] = await conn.query(selectAllRec);
   conn.end();
-
-  res.json(results);
+  res.json({
+    info: {
+      count: result.length,
+    },
+    results: result
+  });
 });
 
 
+// Obtener un libro por su ID
+//GET /libro/:id
 
-// GET /details
+server.get("/libros/:id", async (req, res) => {
 
-server.get("/details", async (req, res) => {
-
-  res.render('details', {})
+  const id = req.params.id;
+  const select = 'SELECT * FROM libros_db WHERE id = ?';
+  const conn = await getConnection();
+  const [result] = await conn.query(select, id);
+  //console.log(result);
+  conn.end();
+  res.json(
+    result[0]
+  );
 });
 
+// añadir una nueva receta 
+//POST / libros
 
-// Serv estáticos
+server.post('/libros', async (req, res) => {
+  const newbook = req.body
+  try {
+    const insert =
+      'INSERT INTO libros_db (nombre, autor, paginas) VALUES (?,?,?)'
+    const conn = await getConnection();
+    const [result] = await conn.query(insert, [
+      newbook.nombre,
+      newbook.autor,
+      newbook.paginas,
+    ]);
+    conn.end();
+    res.json({
+      success: true,
+      id: result.insertId
+    });
+  } catch (error) {
+    res.json({
+      success: false,
+      message: 'Ha ocurrido un error, revise los campos'
+    });
+  }
+});
 
-server.use(express.static("./src/public_html"));
+//Actualiza un libro existente
+//PUT /libro/:id
+
+server.put('/libros/:id', async (req, res) => {
+  const libroid = req.params.id;
+  const { nombrefront, autorfront, paginasfront } = req.body;
+  try {
+    const update = 'UPDATE libros_db SET nombre = ?, autor = ?, paginas = ? WHERE id= ?';
+    const conn = await getConnection();
+    const [result] = await conn.query(update, [
+      nombrefront,
+      autorfront,
+      paginasfront,
+      libroid
+    ]);
+    
+    conn.end();
+    res.json({
+      success: true,
+    });
+  } catch (error) {
+    req.json({
+      success: false,
+      message: 'Ha ocurrido un error, revise los campos'
+    });
+  }
+});
+
+//Eliminar un libro 
+//DELETE /libro/:id 
+server.delete('/libros/:id', async (req, res) => {
+  const id = req.params.id;
+  try {
+    const deleteSql = 'DELETE FROM libros_db WHERE id = ?'
+    const conn = await getConnection();
+    const [result] = await conn.query(deleteSql,[id])
+    conn.end();
+    res.json({
+      success: true,
+    });
+  } catch (error) {
+    res.json({
+      success: false, 
+      message: 'Ha ocurrido un error, revise los campos'
+    });
+  }
+});
